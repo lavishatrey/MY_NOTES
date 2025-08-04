@@ -71,3 +71,66 @@ A **slice** is a modular unit of Redux logic, defined using Redux Toolkit. Each 
 - State management is modularized using Redux slices for each feature.
 - User actions in the UI trigger state changes and backend communication, with immediate feedback provided through the interface.
 - This structure enables scalable, maintainable code and a great user experience for all roles in your Hostel Management System.
+
+Here’s a clear explanation of how APIs are fetched and how JWT tokens are used for authentication and access control in your Hostel Management System (MERN stack):
+
+## 1. How APIs Are Fetched
+
+**Frontend (React + Axios):**
+- API calls are made using Axios, often from Redux handler/thunk files like `studentHandle.js`.
+
+**Typical Workflow:**
+1. **User Action:** A user triggers an operation (e.g., login or fetching students).
+2. **Dispatch & Axios:** Redux thunk or handler function calls Axios:
+   ```js
+   axios.post('/StudentLogin', { email, password });
+   ```
+3. **HTTP Request:** Axios sends the request to the backend.
+4. **Backend Response:** Backend processes and responds with data or an error.
+5. **Update State:** The Redux state/UI is updated based on the response.
+
+**Protected APIs:**
+- For APIs requiring authentication, Axios attaches the JWT token in headers:
+  ```js
+  axios.get('/Students', { headers: { Authorization: `Bearer ${token}` } });
+  ```
+
+## 2. How JWT Tokens Are Used
+
+**Authentication Workflow:**
+- **Login/Register:** User submits login. Backend verifies credentials.
+- **Token Generation:** If valid, backend responds with a JWT token.
+
+**Token Storage:**
+- **Frontend Storage:** The token is saved by the frontend (e.g., in localStorage or Redux state).
+
+**Using JWT for Protected APIs:**
+- **Authorization Header:** For protected APIs, the frontend sends the token as:
+  ```
+  Authorization: Bearer 
+  ```
+
+**Backend Middleware (JWT Verification):**
+- Middleware checks for the Authorization header on incoming requests.
+- The JWT is verified for validity and expiration.
+    - If valid, request is passed to the controller.
+    - If invalid, backend sends an authentication error.
+
+## **JWT Token Workflow (Step-by-Step)**
+
+1. **User logs in**
+2. **Backend generates JWT**
+3. **Frontend receives & stores JWT**
+4. **Frontend requests protected API, includes JWT in Authorization header**
+5. **Backend middleware checks JWT**
+    - If valid → controller proceeds & returns data
+    - If invalid/expired → backend returns error, frontend redirects or displays login
+
+### **Summary**
+
+- **APIs** are fetched from React using Axios.
+- **JWT tokens** are generated on login, stored securely by the frontend, and attached to requests for protected endpoints.
+- **Backend middleware** verifies the JWT: only valid tokens are allowed to proceed to the protected controller logic.
+- This ensures **secure, stateless authentication and access control** for your MERN stack application.
+
+Let me know if you’d like code samples for Axios API calls or JWT implementation!
