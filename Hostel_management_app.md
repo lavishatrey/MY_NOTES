@@ -104,3 +104,51 @@ Data Flow: React (UI) → Redux (state) → Express (API server) → MongoDB (DB
 Unique Points: Role-based dashboards, advanced complaint handling, visual analytics.
 
 Deployment: Frontend on Netlify, backend runs Node.js server (cloud/VPS).
+
+Controllers in the MERN Stack Project
+In this MERN stack project, controllers are key backend modules responsible for handling the core functionality associated with specific resources or features. They serve as the middle layer between routes (which define the API endpoints) and models (which communicate with the MongoDB database).
+
+🔍 Features of Controllers
+Request Handling:
+Accept incoming HTTP requests from routes, process the data, and return appropriate responses.
+
+Business Logic:
+Implement the core application logic for each feature, such as student registration or complaint resolution.
+
+Database Operations:
+Use Mongoose models to perform create, read, update, and delete (CRUD) operations on the MongoDB database.
+
+Validation & Error Handling:
+Check the validity of incoming data and handle errors gracefully to ensure robustness.
+
+Separation of Concerns:
+Keep the backend code organized by isolating business logic from route definitions.
+
+🗂️ Usage in This Project
+Controller files reside in the controllers/ directory, e.g., admin-controller.js, student_controller.js, complain-controller.js.
+
+Each controller manages the logic for a specific module or resource (admin, student, hostel, etc.).
+
+Example Flow
+A route defined in routes/route.js receives a request, for example:
+
+js
+router.post('/students', studentController.createStudent);
+The route calls the relevant controller function (createStudent in student_controller.js).
+
+The controller processes the request: validates input, interacts with the database via the model (studentSchema.js), and sends back a response indicating success, error, or data results.
+
+This modular approach makes the backend codebase clean, maintainable, and easy to test.
+
+Example (Simplified)
+// In routes/route.js
+router.post('/students', studentController.createStudent);
+
+// In controllers/student_controller.js
+exports.createStudent = async (req, res) => {
+  // Validate data
+  // Use Student model to save to DB
+  // Send response
+};
+Summary
+Controllers handle API requests, encapsulate business logic, communicate with the database, and return HTTP responses. They enforce separation of concerns, keeping routing and logic distinct and contributing to a scalable, maintainable backend architecture.
