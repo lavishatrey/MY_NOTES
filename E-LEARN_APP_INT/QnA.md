@@ -112,9 +112,9 @@ flowchart TD
     H --> I[Backend verifies payment]
     I --> J[Backend updates user access]
     J --> K[Frontend updates UI for user]
+```
 
-
-    ## Application Flow Diagram
+ ## Application Flow Diagram
 
 ```mermaid
 flowchart TD
@@ -169,3 +169,4 @@ flowchart TD
     D3 --> B7
     B7 --> B3
     B7 --> A1
+```
