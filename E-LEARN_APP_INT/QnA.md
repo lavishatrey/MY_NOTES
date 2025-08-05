@@ -116,15 +116,15 @@ flowchart TD
 
  ## Application Flow Diagram
 
-```mermaid
 flowchart TD
-    subgraph Frontend [Frontend (React)]
+    %% Subgraphs with correct syntax
+    subgraph FE [Frontend (React)]
         A1[User interacts with UI]
         A2[User submits login/signup form]
         A3[User requests course/video/payment]
     end
 
-    subgraph Backend [Backend (Node.js/Express)]
+    subgraph BE [Backend (Node.js/Express)]
         B1[API Route receives request]
         B2[Controller processes request]
         B3[Model interacts with MongoDB]
@@ -134,14 +134,14 @@ flowchart TD
         B7[Webhook endpoint receives Stripe event]
     end
 
-    subgraph Database [MongoDB]
+    subgraph DB [MongoDB]
         C1[User Data]
         C2[Course Data]
         C3[Video Data]
         C4[Purchase Records]
     end
 
-    subgraph Stripe [Stripe]
+    subgraph ST [Stripe]
         D1[Payment Page]
         D2[Payment Processing]
         D3[Webhook Notification]
@@ -169,4 +169,3 @@ flowchart TD
     D3 --> B7
     B7 --> B3
     B7 --> A1
-```
