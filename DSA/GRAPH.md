@@ -961,19 +961,4 @@ graph LR
 
 ---
 
-### Final note
 
-This file gives:
-
-* Full conceptual coverage,
-* Mermaid visuals for the key concepts,
-* Working C++ code for practically every standard graph algorithm.
-
-If you want:
-
-* More **commented step-by-step trace** of any algorithm (e.g., Dijkstra stepwise), or
-* Complete **Tarjan SCC** code, or
-* **Dinic** implementation for maxflow,
-* Or **visualization-ready outputs** (e.g., printing edges with colors for DFS tree),
-
-tell me which specific algorithm(s) to expand and I’ll add deep explanations, annotated C++ code, and more Mermaid sequence/flow diagrams.
