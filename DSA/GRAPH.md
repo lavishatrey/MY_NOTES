@@ -101,18 +101,24 @@ struct Graph {
 **Weighted adjacency list**
 
 ```cpp
-using pii = std::pair<int,int>; // (neighbor, weight)
-using vvpi = std::vector<std::vector<pii>>;
-
-struct WGraph {
+class GraphList {
     int n;
-    vvpi adj;
-    WGraph(int n): n(n), adj(n) {}
-    void addEdge(int u, int v, int w, bool directed=false) {
-        adj[u].push_back({v,w});
-        if(!directed) adj[v].push_back({u,w});
+    vector<int> adj[100];
+public:
+    GraphList(int nodes): n(nodes) {}
+    void addEdge(int u, int v) {
+        adj[u].push_back(v);
+        adj[v].push_back(u);
+    }
+    void show() {
+        for (int i = 0; i < n; i++) {
+            cout << i << ": ";
+            for (int v: adj[i]) cout << v << " ";
+            cout << "\n";
+        }
     }
 };
+
 ```
 
 ### 3.2 Adjacency Matrix
@@ -122,16 +128,19 @@ struct WGraph {
 * Memory O(n²).
 
 ```cpp
-#include <vector>
-struct AdjMatrix {
+class GraphMatrix {
     int n;
-    std::vector<std::vector<int>> mat;
-    AdjMatrix(int n): n(n), mat(n, std::vector<int>(n, 0)) {}
-    void addEdge(int u, int v, int w=1, bool directed=false) {
-        mat[u][v] = w;
-        if(!directed) mat[v][u] = w;
+    int mat[100][100];
+public:
+    GraphMatrix(int nodes): n(nodes) {
+        for (int i=0;i<n;i++) for (int j=0;j<n;j++) mat[i][j]=0;
     }
+    void addEdge(int u, int v) {
+        mat[u][v] = mat[v][u] = 1;
+    }
+    bool connected(int u, int v) { return mat[u][v] == 1; }
 };
+
 ```
 
 ### 3.3 Edge list
@@ -139,8 +148,15 @@ struct AdjMatrix {
 * Simple list of edges. Useful for algorithms like Kruskal.
 
 ```cpp
-using Edge = std::tuple<int,int,int>; // (weight, u, v) or (u, v, weight)
-std::vector<Edge> edges;
+struct Edge { int u, v, w; };
+class GraphEdges {
+public:
+    vector<Edge> edges;
+    void addEdge(int u, int v, int w) {
+        edges.push_back({u,v,w});
+    }
+};
+
 ```
 
 ---
@@ -187,27 +203,29 @@ flowchart LR
 **C++ (returns distances & parent)**
 
 ```cpp
-#include <bits/stdc++.h>
-using namespace std;
-
-pair<vector<int>, vector<int>> bfs(const vector<vector<int>>& adj, int src) {
-    int n = adj.size();
-    vector<int> dist(n, -1), parent(n, -1);
-    queue<int> q;
-    dist[src] = 0;
-    q.push(src);
-    while(!q.empty()) {
-        int u = q.front(); q.pop();
-        for(int v: adj[u]) {
-            if(dist[v] == -1) {
-                dist[v] = dist[u] + 1;
-                parent[v] = u;
+class BFSGraph {
+    int n;
+    vector<int> adj[100];
+public:
+    BFSGraph(int nodes): n(nodes) {}
+    void addEdge(int u, int v) {
+        adj[u].push_back(v); adj[v].push_back(u);
+    }
+    vector<int> bfs(int src) {
+        vector<int> dist(n,-1);
+        queue<int> q;
+        dist[src]=0; q.push(src);
+        while(!q.empty()) {
+            int u=q.front(); q.pop();
+            for(int v:adj[u]) if(dist[v]==-1) {
+                dist[v]=dist[u]+1;
                 q.push(v);
             }
         }
+        return dist;
     }
-    return {dist, parent};
-}
+};
+
 ```
 
 ### 5.2 Depth-First Search (DFS)
@@ -218,11 +236,22 @@ pair<vector<int>, vector<int>> bfs(const vector<vector<int>>& adj, int src) {
 **Recursive DFS**
 
 ```cpp
-void dfs_rec(const vector<vector<int>>& adj, int u, vector<int>& vis, vector<int>& order) {
-    vis[u] = 1;
-    for(int v : adj[u]) if(!vis[v]) dfs_rec(adj, v, vis, order);
-    order.push_back(u); // post-order useful for topological sort
-}
+class DFSGraph {
+    int n;
+    vector<int> adj[100];
+    void dfsUtil(int u, vector<int> &vis) {
+        vis[u]=1;
+        for (int v:adj[u]) if(!vis[v]) dfsUtil(v,vis);
+    }
+public:
+    DFSGraph(int nodes): n(nodes) {}
+    void addEdge(int u, int v) { adj[u].push_back(v); adj[v].push_back(u); }
+    void dfs(int start) {
+        vector<int> vis(n,0);
+        dfsUtil(start,vis);
+    }
+};
+
 ```
 
 **Iterative DFS**
