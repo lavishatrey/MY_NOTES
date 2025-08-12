@@ -839,10 +839,11 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-  GitRepo --> CI[CI (GitHub Actions)]
-  CI --> Render[Render/Heroku]
-  Render --> App[Node App]
-  App --> MongoDB[(Managed DB)]
+  GitRepo --> CI["CI (GitHub Actions)"]
+  CI --> Render["Render / Heroku"]
+  Render --> App["Node App"]
+  App --> MongoDB["Managed DB"]
+
 ```
 
 **Notes**
