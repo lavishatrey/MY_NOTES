@@ -1,992 +1,792 @@
-# 🕸️ Graph Data Structures — Complete Notes (C++)
+# Graph Data Structures & Algorithms — Complete Notes (Markdown)
 
-*All content below is in **Markdown** and includes **Mermaid diagrams** and **C++ implementations** (modern C++17/C++20 style, using STL). Save as `.md` and render Mermaid where supported.*
+*All code in C++ (LeetCode-style `class Solution`) — explanations, intuition, comments, and time/space complexity included.*
 
----
+> **How to use:** Each section contains (1) concept + intuition, (2) key variants, (3) a clean C++ implementation in a `Solution` class/function format similar to LeetCode, (4) comments inside code, and (5) time & space complexity.
 
-## Contents (quick map)
-
-1. What is a Graph
-2. Types of Graphs (with diagram)
-3. Graph Representations (adjacency list, matrix, edge list) + pros/cons + C++ code
-4. Basic Operations & Utilities (add/remove edges, iterate neighbors)
-5. Traversals: BFS & DFS (theory + C++ + diagrams)
-6. Shortest Paths: Dijkstra, Bellman-Ford, SPFA, Floyd-Warshall, A\* (with code)
-7. Minimum Spanning Tree (Kruskal, Prim) (with code & union-find)
-8. Topological Sort & DAGs
-9. Strongly Connected Components (Kosaraju, Tarjan)
-10. Maximum Flow (Ford–Fulkerson / Edmonds–Karp / Dinic outline)
-11. Cycle detection (directed & undirected)
-12. Bipartite check & Graph coloring basics
-13. Other algorithms: Johnson, All-pairs, Bridges & Articulation Points
-14. Complexity notes & implementation tips
-15. Example usage & testing harnesss
-16. Further reading / practice problems
 
 ---
 
-## 1. What is a Graph
+# Table of Contents
 
-A **graph** `G = (V, E)`:
-
-* `V` — set of vertices (nodes)
-* `E` — set of edges (pairs `(u, v)`)
-
-Edges may be:
-
-* **Directed** (`u -> v`) or **Undirected** (`u — v`)
-* **Weighted** (each edge has a weight) or **Unweighted**
-
-Graphs model networks: social graphs, road maps, web links, dependency graphs, etc.
-
----
-
-## 2. Types of Graphs
-
-```mermaid
-mindmap
-  root((Graphs))
-    Direction
-      Directed
-      Undirected
-    Weight
-      Weighted
-      Unweighted
-    Cycles
-      Cyclic
-      Acyclic
-    Special
-      DAG
-      Bipartite
-      Complete
-      Sparse
-      Dense
-```
-
-Short definitions:
-
-* **DAG**: Directed Acyclic Graph (no directed cycles). Useful for scheduling.
-* **Bipartite**: Vertices can be split into two sets; edges only cross sets.
-* **Complete Graph**: Every pair of vertices connected.
-* **Sparse vs Dense**: Based on `|E|` relative to `|V|^2`.
+1. Graph basics & representations
+2. Traversals: BFS and DFS
+3. Topological sort (Kahn + DFS)
+4. Shortest paths: Dijkstra, Bellman-Ford, 0-1 BFS, Shortest path on DAG
+5. All-pairs shortest paths: Floyd–Warshall
+6. Minimum Spanning Tree: Kruskal (DSU) and Prim (heap)
+7. Strongly Connected Components: Kosaraju & Tarjan
+8. Bridges & Articulation Points (cut edges/vertices)
+9. Union-Find (Disjoint Set Union) — utility & patterns
+10. Bipartite check (BFS/DFS & coloring)
+11. Eulerian Path/Circuit (Hierholzer)
+12. A\* (brief) & heuristics (optional)
+13. Patterns, tips, and complexity summary table
 
 ---
 
-## 3. Graph Representations
+# 1. Graph basics & representations
 
-### 3.1 Adjacency List (most common)
+**Concept:** Graph $G = (V, E)$; directed/undirected, weighted/unweighted.
 
-* For each vertex, store a list of neighbors.
-* Good for sparse graphs.
-* Time: iterate neighbors O(deg(v)), memory O(V + E).
+**Representations:**
 
-**C++ (unweighted, 0-indexed)**
+* Adjacency list: `vector<vector<int>> adj;` or `vector<vector<pair<int,int>>> adj` for weights. (Preferred for sparse graphs.)
+* Adjacency matrix: `vector<vector<int>> mat;` (useful for dense graphs, small n or when you need O(1) edge checks.)
+* Edge list: `vector<tuple<int,int,int>> edges;` (useful for MST and Bellman-Ford).
+
+**Space/time tradeoffs:**
+
+* Adjacency list: `O(V + E)` memory; iterate neighbors in `O(deg(v))`.
+* Matrix: `O(V^2)` memory; `O(1)` edge check.
+
+---
+
+# 2. Traversals: BFS and DFS
+
+## BFS (Breadth-First Search)
+
+**Use cases:** shortest path in unweighted graphs, level-order, bipartite check.
+**Intuition:** Expand by layers — queue stores frontier.
 
 ```cpp
-#include <vector>
-using vi = std::vector<int>;
-using vvi = std::vector<vi>;
-
-struct Graph {
-    int n;           // number of vertices
-    vvi adj;         // adjacency list
-    Graph(int n): n(n), adj(n) {}
-    void addEdge(int u, int v, bool directed=false) {
-        adj[u].push_back(v);
-        if(!directed) adj[v].push_back(u);
+// BFS shortest distance from source in an unweighted graph
+class Solution {
+public:
+    vector<int> bfsShortestPath(int n, vector<vector<int>>& adj, int src) {
+        const int INF = 1e9;
+        vector<int> dist(n, INF);
+        queue<int> q;
+        dist[src] = 0;
+        q.push(src);
+        while (!q.empty()) {
+            int u = q.front(); q.pop();
+            for (int v : adj[u]) {
+                if (dist[v] == INF) {
+                    dist[v] = dist[u] + 1; // 1 per edge (unweighted)
+                    q.push(v);
+                }
+            }
+        }
+        return dist; // INF means unreachable
     }
 };
 ```
 
-**Weighted adjacency list**
+**Complexity:** Time `O(V + E)`, Space `O(V)` for queue & dist.
+
+## DFS (Depth-First Search)
+
+**Use cases:** topological sort, components, cycle detection, bridges/articulation, Euler paths (partially), recursion-based logic.
+**Intuition:** go deep first; recursion/stack.
 
 ```cpp
-class GraphList {
-    int n;
-    vector<int> adj[100];
+// Recursive DFS to build a list of visited nodes (component)
+class Solution {
 public:
-    GraphList(int nodes): n(nodes) {}
-    void addEdge(int u, int v) {
-        adj[u].push_back(v);
-        adj[v].push_back(u);
-    }
-    void show() {
-        for (int i = 0; i < n; i++) {
-            cout << i << ": ";
-            for (int v: adj[i]) cout << v << " ";
-            cout << "\n";
+    void dfs(int u, vector<vector<int>>& adj, vector<int>& vis, vector<int>& comp) {
+        vis[u] = 1;
+        comp.push_back(u);
+        for (int v : adj[u]) {
+            if (!vis[v]) dfs(v, adj, vis, comp);
         }
     }
-};
 
-```
-
-### 3.2 Adjacency Matrix
-
-* `n x n` matrix; `mat[u][v] = weight` or `1` for edge presence.
-* Good for dense graphs and O(1) edge existence check.
-* Memory O(n²).
-
-```cpp
-class GraphMatrix {
-    int n;
-    int mat[100][100];
-public:
-    GraphMatrix(int nodes): n(nodes) {
-        for (int i=0;i<n;i++) for (int j=0;j<n;j++) mat[i][j]=0;
-    }
-    void addEdge(int u, int v) {
-        mat[u][v] = mat[v][u] = 1;
-    }
-    bool connected(int u, int v) { return mat[u][v] == 1; }
-};
-
-```
-
-### 3.3 Edge list
-
-* Simple list of edges. Useful for algorithms like Kruskal.
-
-```cpp
-struct Edge { int u, v, w; };
-class GraphEdges {
-public:
-    vector<Edge> edges;
-    void addEdge(int u, int v, int w) {
-        edges.push_back({u,v,w});
+    vector<vector<int>> getComponents(int n, vector<vector<int>>& adj) {
+        vector<int> vis(n, 0);
+        vector<vector<int>> comps;
+        for (int i = 0; i < n; ++i) {
+            if (!vis[i]) {
+                vector<int> comp;
+                dfs(i, adj, vis, comp);
+                comps.push_back(comp);
+            }
+        }
+        return comps;
     }
 };
-
 ```
+
+**Complexity:** Time `O(V + E)`, Space `O(V)` recursion stack + visited.
 
 ---
 
-## 4. Basic Operations & Utilities
+# 3. Topological Sort
 
-* Iterate neighbors: `for (int v : adj[u])`
-* Degrees: `adj[u].size()`
-* Edge existence: adjacency matrix O(1), adjacency list O(deg(u)) (or maintain unordered\_set)
-* Convert between representations easily.
+**Use cases:** DAG tasks scheduling, DP on DAG.
 
-Utility code (0-indexed):
+## Kahn’s Algorithm (BFS)
 
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-struct GraphUtils {
-    static vector<int> degree(const vector<vector<int>>& adj) {
-        vector<int> deg(adj.size());
-        for(size_t u=0; u<adj.size(); ++u) deg[u] = adj[u].size();
-        return deg;
-    }
-};
-```
-
----
-
-## 5. Traversals
-
-### 5.1 Breadth-First Search (BFS)
-
-* Uses queue, visits nodes in layers (shortest path in unweighted graphs).
-* Complexity: O(V + E).
-
-**Mermaid: BFS layers**
-
-```mermaid
-flowchart LR
-  Start --> Q[queue]
-  Q --> Visit1[visit start]
-  Visit1 --> Explore[neighbors -> enqueue]
-```
-
-**C++ (returns distances & parent)**
+**Intuition:** Repeatedly remove nodes with in-degree 0.
 
 ```cpp
-class BFSGraph {
-    int n;
-    vector<int> adj[100];
+// Return topo order or empty if cycle
+class Solution {
 public:
-    BFSGraph(int nodes): n(nodes) {}
-    void addEdge(int u, int v) {
-        adj[u].push_back(v); adj[v].push_back(u);
-    }
-    vector<int> bfs(int src) {
-        vector<int> dist(n,-1);
+    vector<int> topoKahn(int n, vector<vector<int>>& adj) {
+        vector<int> indeg(n, 0);
+        for (int u = 0; u < n; ++u)
+            for (int v : adj[u]) indeg[v]++;
         queue<int> q;
-        dist[src]=0; q.push(src);
-        while(!q.empty()) {
-            int u=q.front(); q.pop();
-            for(int v:adj[u]) if(dist[v]==-1) {
-                dist[v]=dist[u]+1;
-                q.push(v);
+        for (int i = 0; i < n; ++i)
+            if (indeg[i] == 0) q.push(i);
+        vector<int> order;
+        while (!q.empty()) {
+            int u = q.front(); q.pop();
+            order.push_back(u);
+            for (int v : adj[u]) {
+                if (--indeg[v] == 0) q.push(v);
+            }
+        }
+        if ((int)order.size() != n) return {}; // cycle exists
+        return order;
+    }
+};
+```
+
+**Complexity:** `O(V + E)` time, `O(V)` space.
+
+## DFS-based Topo (reverse postorder)
+
+**Intuition:** Do DFS and push nodes after visiting all neighbors; reverse result.
+
+```cpp
+class Solution {
+public:
+    void dfsTopo(int u, vector<vector<int>>& adj, vector<int>& vis, vector<int>& order) {
+        vis[u] = 1;
+        for (int v : adj[u]) if (!vis[v]) dfsTopo(v, adj, vis, order);
+        order.push_back(u); // postorder
+    }
+
+    vector<int> topoDFS(int n, vector<vector<int>>& adj) {
+        vector<int> vis(n, 0), order;
+        for (int i = 0; i < n; ++i) if (!vis[i]) dfsTopo(i, adj, vis, order);
+        reverse(order.begin(), order.end());
+        // Does not detect cycles easily — add color array if needed.
+        return order;
+    }
+};
+```
+
+**Complexity:** `O(V + E)` time.
+
+---
+
+# 4. Shortest Paths
+
+## Dijkstra (non-negative weights)
+
+**Intuition:** Greedy: always finalize the node with smallest tentative distance using a min-heap.
+
+```cpp
+#include <queue>
+#include <vector>
+using namespace std;
+
+class Solution {
+public:
+    // adj: vector of {neighbor, weight}
+    vector<long long> dijkstra(int n, vector<vector<pair<int,int>>>& adj, int src) {
+        const long long INF = (1LL<<60);
+        vector<long long> dist(n, INF);
+        // min-heap of (distance, node)
+        priority_queue<pair<long long,int>, vector<pair<long long,int>>, greater<>> pq;
+        dist[src] = 0;
+        pq.push({0, src});
+        while (!pq.empty()) {
+            auto [d, u] = pq.top(); pq.pop();
+            if (d != dist[u]) continue; // stale
+            for (auto &e : adj[u]) {
+                int v = e.first; int w = e.second;
+                if (dist[v] > d + w) {
+                    dist[v] = d + w;
+                    pq.push({dist[v], v});
+                }
             }
         }
         return dist;
     }
 };
-
 ```
 
-### 5.2 Depth-First Search (DFS)
+**Complexity:** `O((V + E) log V)` or more commonly `O(E log V)` with binary heap. Space `O(V)`.
 
-* Uses recursion or stack. Good for discovering components, topological sort, cycle detection.
-* Complexity: O(V + E).
+## Bellman–Ford (handles negative weights, detects negative cycle)
 
-**Recursive DFS**
+**Intuition:** Relax edges V-1 times; if we can relax further, there's a negative cycle.
 
 ```cpp
-class DFSGraph {
-    int n;
-    vector<int> adj[100];
-    void dfsUtil(int u, vector<int> &vis) {
-        vis[u]=1;
-        for (int v:adj[u]) if(!vis[v]) dfsUtil(v,vis);
-    }
+class Solution {
 public:
-    DFSGraph(int nodes): n(nodes) {}
-    void addEdge(int u, int v) { adj[u].push_back(v); adj[v].push_back(u); }
-    void dfs(int start) {
-        vector<int> vis(n,0);
-        dfsUtil(start,vis);
+    // edges: vector of {u, v, w}
+    pair<vector<long long>, bool> bellmanFord(int n, vector<tuple<int,int,int>>& edges, int src) {
+        const long long INF = (1LL<<60);
+        vector<long long> dist(n, INF);
+        dist[src] = 0;
+        // Relax V-1 times
+        for (int i = 0; i < n-1; ++i) {
+            bool changed = false;
+            for (auto &e : edges) {
+                int u, v, w; tie(u,v,w) = e;
+                if (dist[u] != INF && dist[v] > dist[u] + w) {
+                    dist[v] = dist[u] + w;
+                    changed = true;
+                }
+            }
+            if (!changed) break;
+        }
+        // check negative cycle
+        bool negCycle = false;
+        for (auto &e : edges) {
+            int u, v, w; tie(u,v,w) = e;
+            if (dist[u] != INF && dist[v] > dist[u] + w) {
+                negCycle = true;
+                break;
+            }
+        }
+        return {dist, negCycle};
     }
 };
-
 ```
 
-**Iterative DFS**
+**Complexity:** `O(V * E)` time, `O(V)` space.
+
+## 0-1 BFS (edges weights only 0 or 1)
+
+**Intuition:** Use deque; push\_front for 0 edges and push\_back for 1 edges.
 
 ```cpp
-vector<int> dfs_iter(int src, const vector<vector<int>>& adj) {
-    int n = adj.size();
-    vector<int> vis(n, 0), order;
-    stack<int> st;
-    st.push(src);
-    while(!st.empty()) {
-        int u = st.top(); st.pop();
-        if(vis[u]) continue;
-        vis[u] = 1;
-        order.push_back(u);
-        for(int v: adj[u]) if(!vis[v]) st.push(v);
-    }
-    return order;
-}
-```
-
----
-
-## 6. Shortest Path Algorithms
-
-### 6.1 Unweighted Graphs: BFS (shortest #edges)
-
-Use BFS distances from section 5.1.
-
----
-
-### 6.2 Dijkstra (non-negative weights)
-
-* Complexity: `O((V+E) log V)` using priority\_queue
-* For weighted graphs with non-negative weights.
-
-**C++ (min-heap)**
-
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-using ll = long long;
-const ll INF = (1LL<<60);
-
-vector<ll> dijkstra(const vector<vector<pair<int,int>>>& adj, int src) {
-    int n = adj.size();
-    vector<ll> dist(n, INF);
-    dist[src] = 0;
-    using pli = pair<ll,int>; // (dist, node)
-    priority_queue<pli, vector<pli>, greater<pli>> pq;
-    pq.push({0, src});
-    while(!pq.empty()) {
-        auto [d,u] = pq.top(); pq.pop();
-        if(d != dist[u]) continue;
-        for(auto [v,w] : adj[u]) {
-            if(dist[v] > dist[u] + w) {
-                dist[v] = dist[u] + w;
-                pq.push({dist[v], v});
+#include <deque>
+class Solution {
+public:
+    vector<int> zeroOneBFS(int n, vector<vector<pair<int,int>>>& adj, int src) {
+        const int INF = 1e9;
+        vector<int> dist(n, INF);
+        deque<int> dq;
+        dist[src] = 0; dq.push_back(src);
+        while (!dq.empty()) {
+            int u = dq.front(); dq.pop_front();
+            for (auto &pr : adj[u]) {
+                int v = pr.first, w = pr.second; // w in {0,1}
+                if (dist[v] > dist[u] + w) {
+                    dist[v] = dist[u] + w;
+                    if (w == 0) dq.push_front(v);
+                    else dq.push_back(v);
+                }
             }
         }
+        return dist;
     }
-    return dist;
-}
+};
 ```
 
----
+**Complexity:** `O(V + E)`, Space `O(V)`.
 
-### 6.3 Bellman-Ford (handles negative weights, detects negative cycles)
+## Shortest path in DAG
 
-* Complexity: `O(VE)`
-* Detects negative cycles reachable from `src`.
+**Intuition:** Topologically sort then relax edges in topo order — linear time.
 
 ```cpp
-vector<long long> bellman_ford(int n, const vector<tuple<int,int,long long>>& edges, int src) {
-    const long long INF = (1LL<<60);
-    vector<long long> dist(n, INF);
-    dist[src] = 0;
-    for(int i=0;i<n-1;i++){
-        bool changed = false;
-        for(auto &e: edges){
-            int u,v; long long w; tie(u,v,w) = e;
-            if(dist[u] != INF && dist[v] > dist[u] + w) {
-                dist[v] = dist[u] + w;
-                changed = true;
+class Solution {
+public:
+    vector<long long> shortestPathDAG(int n, vector<vector<pair<int,int>>>& adj, int src) {
+        // build indegree for topo
+        vector<int> indeg(n, 0);
+        vector<vector<int>> adjSimple(n);
+        for (int u = 0; u < n; ++u)
+            for (auto &pr : adj[u]) indeg[pr.first]++; // assume no multigraph, directed
+        // get topo order using Kahn
+        queue<int> q;
+        for (int i = 0; i < n; ++i) if (indeg[i] == 0) q.push(i);
+        vector<int> topo;
+        while (!q.empty()) {
+            int u = q.front(); q.pop();
+            topo.push_back(u);
+            for (auto &pr : adj[u]) {
+                int v = pr.first;
+                if (--indeg[v] == 0) q.push(v);
             }
         }
-        if(!changed) break;
-    }
-    // optional: detect negative cycle
-    for(auto &e: edges){
-        int u,v; long long w; tie(u,v,w) = e;
-        if(dist[u] != INF && dist[v] > dist[u] + w) {
-            // negative cycle reachable
-            // handle as needed (e.g., mark distances -INF)
+        const long long INF = (1LL<<60);
+        vector<long long> dist(n, INF);
+        dist[src] = 0;
+        for (int u : topo) {
+            if (dist[u] == INF) continue;
+            for (auto &pr : adj[u]) {
+                int v = pr.first; int w = pr.second;
+                if (dist[v] > dist[u] + w) dist[v] = dist[u] + w;
+            }
         }
+        return dist;
     }
-    return dist;
-}
+};
 ```
+
+**Complexity:** `O(V + E)` time.
 
 ---
 
-### 6.4 Floyd–Warshall (all-pairs shortest paths)
+# 5. All-Pairs Shortest Paths — Floyd–Warshall
 
-* Complexity `O(n^3)`.
-* Handles negative weights but not negative cycles detection.
+**Intuition:** Dynamic programming over intermediate vertices. Works for moderate `n` (e.g., `n <= 400`).
 
 ```cpp
-vector<vector<long long>> floyd_warshall(int n, vector<vector<long long>> dist) {
-    const long long INF = (1LL<<60);
-    for(int k=0;k<n;k++)
-        for(int i=0;i<n;i++)
-            if(dist[i][k] != INF)
-                for(int j=0;j<n;j++)
-                    if(dist[k][j] != INF)
+class Solution {
+public:
+    // dist matrix: n x n, INF if no edge; dist[i][i] = 0
+    void floydWarshall(vector<vector<long long>>& dist) {
+        int n = dist.size();
+        for (int k = 0; k < n; ++k)
+            for (int i = 0; i < n; ++i)
+                for (int j = 0; j < n; ++j)
+                    if (dist[i][k] < (1LL<<60) && dist[k][j] < (1LL<<60))
                         dist[i][j] = min(dist[i][j], dist[i][k] + dist[k][j]);
-    return dist;
-}
-```
-
----
-
-### 6.5 A\* Search (heuristic shortest path)
-
-* Use when you have heuristic `h(u)` estimating cost to goal.
-* Priority = `g(u)+h(u)`.
-
-```cpp
-#include <functional>
-vector<long long> astar(int n, int src, int target, const vector<vector<pair<int,int>>>& adj,
-                       function<long long(int,int)> h) {
-    const long long INF = (1LL<<60);
-    vector<long long> g(n, INF);
-    g[src] = 0;
-    using pli = pair<long long,int>; // (f, node)
-    priority_queue<pli, vector<pli>, greater<pli>> pq;
-    pq.push({h(src,target), src});
-    while(!pq.empty()) {
-        auto [f,u] = pq.top(); pq.pop();
-        if(u == target) break;
-        for(auto [v,w] : adj[u]) {
-            if(g[v] > g[u] + w) {
-                g[v] = g[u] + w;
-                pq.push({g[v] + h(v,target), v});
-            }
-        }
     }
-    return g;
-}
+};
 ```
+
+**Complexity:** `O(n^3)` time, `O(n^2)` space.
 
 ---
 
-## 7. Minimum Spanning Tree (MST)
+# 6. Minimum Spanning Tree (MST)
 
-### 7.1 Kruskal (uses Union-Find)
+## Kruskal + DSU
 
-* Sort edges by weight and add if they don't form cycle.
-* Complexity `O(E log E)`.
-
-**Union-Find (Disjoint Set Union)**
+**Intuition:** Sort edges by weight, union components greedily.
 
 ```cpp
-struct DSU {
+#include <algorithm>
+class DSU {
+public:
     vector<int> p, r;
-    DSU(int n): p(n), r(n,0) { iota(p.begin(), p.end(), 0); }
-    int find(int x){ return p[x]==x ? x : p[x]=find(p[x]); }
+    DSU(int n): p(n), r(n,0) { for(int i=0;i<n;++i)p[i]=i; }
+    int find(int x){ return p[x]==x?x:p[x]=find(p[x]); }
     bool unite(int a,int b){
-        a = find(a); b = find(b);
+        a=find(a); b=find(b);
         if(a==b) return false;
         if(r[a]<r[b]) swap(a,b);
-        p[b]=a; if(r[a]==r[b]) r[a]++; return true;
+        p[b]=a;
+        if(r[a]==r[b]) r[a]++;
+        return true;
+    }
+};
+
+class Solution {
+public:
+    // edges: vector of {w, u, v}
+    long long kruskal(int n, vector<tuple<int,int,int>>& edges) {
+        sort(edges.begin(), edges.end()); // sorts by weight
+        DSU dsu(n);
+        long long mst = 0;
+        for (auto &t : edges) {
+            int w,u,v; tie(w,u,v) = t;
+            if (dsu.unite(u,v)) mst += w;
+        }
+        return mst;
     }
 };
 ```
 
-**Kruskal**
+**Complexity:** `O(E log E)` (sorting), space `O(V)`.
+
+## Prim (using heap)
+
+**Intuition:** Grow a single tree, always pick smallest crossing edge.
 
 ```cpp
-using Edge = tuple<int,int,int>; // (w,u,v)
-int kruskal(int n, vector<Edge>& edges) {
-    sort(edges.begin(), edges.end());
-    DSU dsu(n);
-    long long cost = 0;
-    for(auto [w,u,v] : edges) {
-        if(dsu.unite(u,v)) cost += w;
+#include <queue>
+class Solution {
+public:
+    // adj: vector of {neighbor, weight}
+    long long prim(int n, vector<vector<pair<int,int>>>& adj) {
+        vector<int> vis(n, 0);
+        long long total = 0;
+        // min-heap of (weight, to)
+        priority_queue<pair<int,int>, vector<pair<int,int>>, greater<>> pq;
+        pq.push({0, 0}); // start from node 0
+        while (!pq.empty()) {
+            auto [w, u] = pq.top(); pq.pop();
+            if (vis[u]) continue;
+            vis[u] = 1;
+            total += w;
+            for (auto &e : adj[u]) {
+                int v = e.first, wt = e.second;
+                if (!vis[v]) pq.push({wt, v});
+            }
+        }
+        // if not all nodes visited, graph disconnected
+        return total;
     }
-    return cost;
-}
+};
 ```
 
-### 7.2 Prim (priority queue)
-
-* Complexity `O(E log V)` with heap.
-* Start from a node and expand cheapest edge to new vertex.
-
-```cpp
-long long prim(int n, const vector<vector<pair<int,int>>>& adj, int src=0) {
-    vector<char> vis(n, false);
-    using pli = pair<int,int>; // (weight, vertex)
-    priority_queue<pli, vector<pli>, greater<pli>> pq;
-    pq.push({0, src});
-    long long total = 0;
-    while(!pq.empty()){
-        auto [w,u] = pq.top(); pq.pop();
-        if(vis[u]) continue;
-        vis[u] = true;
-        total += w;
-        for(auto [v,wt] : adj[u])
-            if(!vis[v]) pq.push({wt, v});
-    }
-    return total;
-}
-```
+**Complexity:** `O(E log V)` time, `O(V)` space.
 
 ---
 
-## 8. Topological Sort (DAG)
+# 7. Strongly Connected Components (SCC)
 
-* Linear ordering of nodes such that for every directed edge `u->v`, `u` comes before `v`.
-* Can use DFS (post-order reverse) or Kahn's algorithm (BFS using indegrees).
+## Kosaraju’s Algorithm
 
-**Kahn (BFS)**
+**Intuition:** 1) do DFS ordering (finish times), 2) reverse graph, 3) DFS in order to collect components.
 
 ```cpp
-vector<int> topo_kahn(const vector<vector<int>>& adj) {
-    int n = adj.size();
-    vector<int> indeg(n,0);
-    for(int u=0; u<n; ++u)
-        for(int v: adj[u]) indeg[v]++;
-    queue<int> q;
-    for(int i=0;i<n;i++) if(indeg[i]==0) q.push(i);
-    vector<int> topo;
-    while(!q.empty()){
-        int u = q.front(); q.pop();
-        topo.push_back(u);
-        for(int v: adj[u]) if(--indeg[v]==0) q.push(v);
+class Solution {
+public:
+    void dfs1(int u, vector<vector<int>>& adj, vector<int>& vis, vector<int>& order) {
+        vis[u] = 1;
+        for (int v: adj[u]) if (!vis[v]) dfs1(v, adj, vis, order);
+        order.push_back(u);
     }
-    if((int)topo.size()!=n) return {}; // not a DAG (has cycle)
-    return topo;
-}
+    void dfs2(int u, vector<vector<int>>& rev, vector<int>& vis, vector<int>& comp) {
+        vis[u] = 1;
+        comp.push_back(u);
+        for (int v: rev[u]) if (!vis[v]) dfs2(v, rev, vis, comp);
+    }
+
+    vector<vector<int>> kosaraju(int n, vector<vector<int>>& adj) {
+        vector<int> vis(n, 0);
+        vector<int> order;
+        for (int i = 0; i < n; ++i) if (!vis[i]) dfs1(i, adj, vis, order);
+        vector<vector<int>> rev(n);
+        for (int u = 0; u < n; ++u)
+            for (int v: adj[u]) rev[v].push_back(u);
+        fill(vis.begin(), vis.end(), 0);
+        vector<vector<int>> sccs;
+        for (int i = n-1; i >= 0; --i) {
+            int u = order[i];
+            if (!vis[u]) {
+                vector<int> comp;
+                dfs2(u, rev, vis, comp);
+                sccs.push_back(comp);
+            }
+        }
+        return sccs;
+    }
+};
 ```
 
-**DFS based**
+**Complexity:** `O(V + E)` time.
 
-* Do DFS and push nodes in post-order; reverse at the end.
+## Tarjan’s Algorithm (single DFS)
 
----
-
-## 9. Strongly Connected Components (SCC)
-
-### 9.1 Kosaraju (two-pass DFS)
-
-1. Run DFS and push nodes to stack in post-order.
-2. Reverse edges.
-3. Pop nodes from stack and run DFS on reversed graph to collect SCCs.
+**Intuition:** Use discovery time and low-link values to detect root of SCC.
 
 ```cpp
-void dfs1(int u, vector<int>& vis, vector<int>& order, const vector<vector<int>>& adj) {
-    vis[u]=1;
-    for(int v: adj[u]) if(!vis[v]) dfs1(v,vis,order,adj);
-    order.push_back(u);
-}
-void dfs2(int u, vector<int>& comp, vector<int>& vis, const vector<vector<int>>& radj) {
-    vis[u]=1; comp.push_back(u);
-    for(int v: radj[u]) if(!vis[v]) dfs2(v, comp, vis, radj);
-}
-vector<vector<int>> kosaraju(const vector<vector<int>>& adj) {
-    int n=adj.size();
-    vector<int> vis(n,0), order;
-    for(int i=0;i<n;i++) if(!vis[i]) dfs1(i,vis,order,adj);
-    vector<vector<int>> radj(n);
-    for(int u=0; u<n; ++u) for(int v: adj[u]) radj[v].push_back(u);
-    fill(vis.begin(), vis.end(), 0);
+class Solution {
+public:
+    int timeCounter = 0;
+    vector<int> disc, low, stStack;
+    vector<char> onStack;
     vector<vector<int>> sccs;
-    for(int i=n-1;i>=0;i--) {
-        int v = order[i];
-        if(!vis[v]) {
+
+    void tarjanDFS(int u, vector<vector<int>>& adj) {
+        disc[u] = low[u] = ++timeCounter;
+        stStack.push_back(u);
+        onStack[u] = 1;
+        for (int v : adj[u]) {
+            if (disc[v] == 0) {
+                tarjanDFS(v, adj);
+                low[u] = min(low[u], low[v]);
+            } else if (onStack[v]) {
+                low[u] = min(low[u], disc[v]);
+            }
+        }
+        if (low[u] == disc[u]) { // head of SCC
             vector<int> comp;
-            dfs2(v, comp, vis, radj);
+            while (true) {
+                int v = stStack.back(); stStack.pop_back();
+                onStack[v] = 0;
+                comp.push_back(v);
+                if (v == u) break;
+            }
             sccs.push_back(comp);
         }
     }
-    return sccs;
-}
+
+    vector<vector<int>> tarjan(int n, vector<vector<int>>& adj) {
+        disc.assign(n, 0); low.assign(n, 0); onStack.assign(n, 0);
+        timeCounter = 0;
+        for (int i = 0; i < n; ++i) if (disc[i] == 0) tarjanDFS(i, adj);
+        return sccs;
+    }
+};
 ```
 
-### 9.2 Tarjan (single DFS, lowlink)
-
-* More advanced; returns SCCs in one pass with stack and timestamps.
+**Complexity:** `O(V + E)`.
 
 ---
 
-## 10. Maximum Flow
+# 8. Bridges & Articulation Points
 
-### 10.1 Ford–Fulkerson (Edmonds–Karp)
+**Intuition:** Use DFS timestamps and `low` values:
 
-* Use BFS to find augmenting path (Edmonds–Karp uses BFS) -> guarantees `O(V * E^2)`.
-* Dinic is faster in practice: `O(E * sqrt(V))` for unit networks or better `O(EV^1/2)` variants.
-
-**Edmonds–Karp (capacity graph)**
+* An edge `(u,v)` is a bridge if `low[v] > disc[u]`.
+* Vertex `u` is articulation if certain child conditions met (root child count >1 or `low[child] >= disc[u]`).
 
 ```cpp
-int bfs_ek(int s, int t, vector<int>& parent, const vector<vector<int>>& cap, const vector<vector<int>>& adj) {
-    fill(parent.begin(), parent.end(), -1);
-    parent[s] = -2;
-    queue<pair<int,int>> q;
-    q.push({s, INT_MAX});
-    while(!q.empty()){
-        auto [u, flow] = q.front(); q.pop();
-        for(int v: adj[u]){
-            if(parent[v] == -1 && cap[u][v] > 0){
-                parent[v] = u;
-                int new_flow = min(flow, cap[u][v]);
-                if(v == t) return new_flow;
-                q.push({v, new_flow});
-            }
-        }
-    }
-    return 0;
-}
-int maxflow_ek(int n, int s, int t, vector<vector<int>>& cap, const vector<vector<int>>& adj) {
-    int flow = 0;
-    vector<int> parent(n);
-    int new_flow;
-    while((new_flow = bfs_ek(s,t,parent,cap,adj))){
-        flow += new_flow;
-        int v = t;
-        while(v != s) {
-            int u = parent[v];
-            cap[u][v] -= new_flow;
-            cap[v][u] += new_flow;
-            v = u;
-        }
-    }
-    return flow;
-}
-```
-
-*(This implementation expects `adj` adjacency list and `cap` capacity matrix.)*
-
----
-
-## 11. Cycle Detection
-
-### 11.1 Undirected Graph
-
-* Use DFS and check if there is an edge to visited vertex that is not parent.
-
-```cpp
-bool dfs_cycle_undirected(int u, int parent, vector<int>& vis, const vector<vector<int>>& adj) {
-    vis[u] = 1;
-    for(int v: adj[u]) {
-        if(!vis[v]) {
-            if(dfs_cycle_undirected(v, u, vis, adj)) return true;
-        } else if(v != parent) {
-            return true;
-        }
-    }
-    return false;
-}
-bool hasCycleUndirected(const vector<vector<int>>& adj) {
-    int n = adj.size();
-    vector<int> vis(n,0);
-    for(int i=0;i<n;i++) if(!vis[i] && dfs_cycle_undirected(i,-1,vis,adj)) return true;
-    return false;
-}
-```
-
-### 11.2 Directed Graph
-
-* Use DFS with recursion stack (`0=unvisited, 1=visiting, 2=visited`) to detect back-edge.
-
-```cpp
-bool dfs_cycle_directed(int u, vector<int>& state, const vector<vector<int>>& adj) {
-    state[u] = 1; // visiting
-    for(int v: adj[u]) {
-        if(state[v] == 0 && dfs_cycle_directed(v, state, adj)) return true;
-        else if(state[v] == 1) return true;
-    }
-    state[u] = 2; // visited
-    return false;
-}
-bool hasCycleDirected(const vector<vector<int>>& adj) {
-    int n = adj.size();
-    vector<int> state(n, 0);
-    for(int i=0;i<n;i++) if(state[i]==0 && dfs_cycle_directed(i, state, adj)) return true;
-    return false;
-}
-```
-
----
-
-## 12. Bipartite Check & Graph Coloring
-
-### 12.1 Bipartite using BFS/2-coloring
-
-* Color graph in two colors; if conflict, not bipartite.
-
-```cpp
-bool isBipartite(const vector<vector<int>>& adj) {
-    int n = adj.size();
-    vector<int> color(n, -1);
-    for(int s=0; s<n; ++s) {
-        if(color[s]!=-1) continue;
-        queue<int> q;
-        q.push(s);
-        color[s] = 0;
-        while(!q.empty()) {
-            int u = q.front(); q.pop();
-            for(int v: adj[u]) {
-                if(color[v] == -1) {
-                    color[v] = color[u]^1;
-                    q.push(v);
-                } else if(color[v] == color[u]) return false;
-            }
-        }
-    }
-    return true;
-}
-```
-
-### 12.2 Graph Coloring (greedy heuristic)
-
-* NP-hard to find optimal coloring; greedy approximations exist.
-
-```cpp
-vector<int> greedyColoring(const vector<vector<int>>& adj) {
-    int n = adj.size();
-    vector<int> color(n, -1);
-    color[0] = 0;
-    for(int u=1; u<n; ++u) {
-        vector<char> used(n, false);
-        for(int v: adj[u]) if(color[v] != -1) used[color[v]] = true;
-        int c=0;
-        while(used[c]) c++;
-        color[u] = c;
-    }
-    return color;
-}
-```
-
----
-
-## 13. Bridges & Articulation Points (Cut Edges / Vertices)
-
-Use Tarjan's DFS with discovery time and low-link values.
-
-**Bridges**
-
-```cpp
-void dfs_bridges(int u, int parent, vector<int>& disc, vector<int>& low, int &time, const vector<vector<int>>& adj, vector<pair<int,int>>& bridges) {
-    disc[u] = low[u] = ++time;
-    for(int v: adj[u]) {
-        if(!disc[v]) {
-            dfs_bridges(v, u, disc, low, time, adj, bridges);
-            low[u] = min(low[u], low[v]);
-            if(low[v] > disc[u])
-                bridges.emplace_back(u, v);
-        } else if(v != parent) {
-            low[u] = min(low[u], disc[v]);
-        }
-    }
-}
-vector<pair<int,int>> findBridges(const vector<vector<int>>& adj) {
-    int n = adj.size(), time = 0;
-    vector<int> disc(n,0), low(n,0);
+class Solution {
+public:
+    int timeCounter;
+    vector<int> disc, low, parent;
     vector<pair<int,int>> bridges;
-    for(int i=0;i<n;i++) if(!disc[i]) dfs_bridges(i, -1, disc, low, time, adj, bridges);
-    return bridges;
-}
-```
+    vector<int> articulation; // boolean 0/1 stored as int
 
-**Articulation Points**
-
-* Similar but check `low[v] >= disc[u]` and root special case.
-
----
-
-## 14. Johnson’s Algorithm (All pairs shortest paths for sparse weighted graphs)
-
-* Reweights edges using Bellman-Ford once then runs Dijkstra from each vertex.
-* Complexity: `O(V E log V)` roughly.
-
----
-
-## 15. Advanced Topics (briefly)
-
-* **Planar graphs**: faces, Euler's formula.
-* **Graph isomorphism**: complex topic.
-* **Random graphs**: Erdős–Rényi models.
-* **Dynamic graphs**: maintain connectivity as edges change.
-
----
-
-## 16. Complexity Summary
-
-| Algorithm       | Time Complexity         | Space    |
-| --------------- | ----------------------- | -------- |
-| BFS/DFS         | `O(V+E)`                | `O(V)`   |
-| Dijkstra (heap) | `O((V+E) log V)`        | `O(V)`   |
-| Bellman-Ford    | `O(VE)`                 | `O(V)`   |
-| Floyd-Warshall  | `O(V^3)`                | `O(V^2)` |
-| Kruskal         | `O(E log E)`            | `O(E)`   |
-| Prim            | `O(E log V)`            | `O(V)`   |
-| Kosaraju        | `O(V+E)`                | `O(V+E)` |
-| Edmonds–Karp    | `O(V E^2)`              | `O(V+E)` |
-| Dinic           | `O(E sqrt(V))` (approx) | `O(V+E)` |
-
----
-
-## 17. Implementation Tips & Best Practices (C++)
-
-* Use `vector<vector<pair<int,int>>>` for weighted adjacency lists.
-* Prefer 0-based indexing in C++ (consistent with STL).
-* Prefer `long long` for distances when weights can be large.
-* For priority\_queue use `pair<dist,node>` and `greater<>` to make it min-heap.
-* For sparse graphs, prefer adjacency lists (memory-safe).
-* Check for integer overflow in sums: cast to `long long`.
-* When implementing DFS recursion on large graphs, either increase stack or convert to iterative.
-
----
-
-## 18. Full Example: Multi-Feature C++ Template
-
-A single driver program showing reading a graph and running BFS, Dijkstra, Kruskal, DFS, topo sort (choose via input). This is a compact harness to test: compile with `g++ -std=c++17`.
-
-```cpp
-#include <bits/stdc++.h>
-using namespace std;
-using ll = long long;
-const ll INF = (1LL<<60);
-
-// Simple unweighted graph
-struct Graph {
-    int n;
-    vector<vector<int>> adj;
-    Graph(int n): n(n), adj(n) {}
-    void addEdge(int u,int v,bool directed=false){
-        adj[u].push_back(v);
-        if(!directed) adj[v].push_back(u);
-    }
-};
-
-// BFS
-pair<vector<int>, vector<int>> bfs(const vector<vector<int>>& adj, int src){
-    int n = adj.size();
-    vector<int> dist(n,-1), par(n,-1);
-    queue<int> q;
-    dist[src]=0; q.push(src);
-    while(!q.empty()){
-        int u=q.front(); q.pop();
-        for(int v: adj[u]) if(dist[v]==-1){
-            dist[v]=dist[u]+1; par[v]=u; q.push(v);
-        }
-    }
-    return {dist, par};
-}
-
-// Dijkstra
-vector<ll> dijkstra(const vector<vector<pair<int,int>>>& adj, int src){
-    int n = adj.size();
-    vector<ll> dist(n, INF);
-    dist[src]=0;
-    using pli = pair<ll,int>;
-    priority_queue<pli, vector<pli>, greater<pli>> pq;
-    pq.push({0, src});
-    while(!pq.empty()){
-        auto [d,u] = pq.top(); pq.pop();
-        if(d!=dist[u]) continue;
-        for(auto [v,w] : adj[u]){
-            if(dist[v] > dist[u] + w){
-                dist[v] = dist[u] + w;
-                pq.push({dist[v], v});
+    void dfs(int u, vector<vector<int>>& adj) {
+        disc[u] = low[u] = ++timeCounter;
+        int children = 0;
+        for (int v : adj[u]) {
+            if (disc[v] == 0) {
+                children++;
+                parent[v] = u;
+                dfs(v, adj);
+                low[u] = min(low[u], low[v]);
+                // bridge
+                if (low[v] > disc[u]) bridges.push_back({u,v});
+                // articulation
+                if (parent[u] == -1 && children > 1) articulation[u] = 1;
+                if (parent[u] != -1 && low[v] >= disc[u]) articulation[u] = 1;
+            } else if (v != parent[u]) {
+                low[u] = min(low[u], disc[v]);
             }
         }
     }
-    return dist;
-}
 
-// Kruskal
-struct DSU { vector<int> p, r; DSU(int n):p(n),r(n,0){ iota(p.begin(),p.end(),0); }
-    int find(int x){ return p[x]==x?x:p[x]=find(p[x]); }
-    bool unite(int a,int b){ a=find(a); b=find(b); if(a==b) return false; if(r[a]<r[b]) swap(a,b); p[b]=a; if(r[a]==r[b]) r[a]++; return true;}
+    void findBridgesArticulation(int n, vector<vector<int>>& adj) {
+        disc.assign(n, 0); low.assign(n, 0); parent.assign(n, -1);
+        articulation.assign(n, 0); timeCounter = 0;
+        for (int i = 0; i < n; ++i) if (disc[i] == 0) dfs(i, adj);
+        // bridges & articulation now filled
+    }
 };
+```
 
-int kruskal(int n, vector<tuple<int,int,int>>& edges){
-    sort(edges.begin(), edges.end());
-    DSU dsu(n);
-    long long cost = 0;
-    for(auto &e : edges){
-        int w,u,v; tie(w,u,v) = e;
-        if(dsu.unite(u,v)) cost += w;
+**Complexity:** `O(V + E)` time, `O(V)` space.
+
+---
+
+# 9. Union-Find (Disjoint Set Union — DSU)
+
+**Use cases:** Kruskal, connectivity, offline queries, cycle detection in undirected graph.
+
+```cpp
+class DSU {
+public:
+    vector<int> parent, rank;
+    DSU(int n) {
+        parent.resize(n);
+        rank.assign(n, 0);
+        for (int i = 0; i < n; ++i) parent[i] = i;
     }
-    return cost;
-}
-
-// Topological sort Kahn
-vector<int> topo_kahn(const vector<vector<int>>& adj){
-    int n=adj.size();
-    vector<int> indeg(n,0);
-    for(int u=0; u<n; ++u) for(int v: adj[u]) indeg[v]++;
-    queue<int> q; for(int i=0;i<n;i++) if(indeg[i]==0) q.push(i);
-    vector<int> topo;
-    while(!q.empty()){
-        int u=q.front(); q.pop();
-        topo.push_back(u);
-        for(int v: adj[u]) if(--indeg[v]==0) q.push(v);
+    int find(int x) {
+        if (parent[x] != x) parent[x] = find(parent[x]); // path compression
+        return parent[x];
     }
-    if((int)topo.size()!=n) return {};
-    return topo;
-}
+    bool unite(int a, int b) {
+        a = find(a); b = find(b);
+        if (a == b) return false;
+        if (rank[a] < rank[b]) swap(a, b);
+        parent[b] = a;
+        if (rank[a] == rank[b]) rank[a]++;
+        return true;
+    }
+};
+```
 
-// Example main (interactive demo)
-int main(){
-    ios::sync_with_stdio(false);
-    cin.tie(nullptr);
-    cout << "Demo Graph: enter n m (nodes edges)\n";
-    int n,m; if(!(cin>>n>>m)) return 0;
-    vector<vector<int>> adj(n);
-    vector<vector<pair<int,int>>> wadj(n);
-    vector<tuple<int,int,int>> edges;
-    cout << "Enter edges: u v [w optional]\n";
-    for(int i=0;i<m;i++){
-        int u,v; ll w=1;
-        cin >> u >> v;
-        if(!(cin.peek()=='\n') && cin >> w) {
-            // weight provided
+**Complexity:** near `O(α(n))` amortized per op, nearly constant. Space `O(n)`.
+
+---
+
+# 10. Bipartite Check
+
+**Intuition:** Two-coloring using BFS/DFS. If any edge connects same color -> not bipartite.
+
+```cpp
+class Solution {
+public:
+    bool isBipartite(int n, vector<vector<int>>& adj) {
+        vector<int> color(n, -1);
+        queue<int> q;
+        for (int start = 0; start < n; ++start) {
+            if (color[start] != -1) continue;
+            color[start] = 0;
+            q.push(start);
+            while (!q.empty()) {
+                int u = q.front(); q.pop();
+                for (int v : adj[u]) {
+                    if (color[v] == -1) {
+                        color[v] = color[u]^1;
+                        q.push(v);
+                    } else if (color[v] == color[u]) return false;
+                }
+            }
         }
-        adj[u].push_back(v);
-        adj[v].push_back(u);
-        wadj[u].push_back({v,(int)w});
-        wadj[v].push_back({u,(int)w});
-        edges.emplace_back((int)w, u, v);
+        return true;
     }
-    // BFS from 0
-    auto [dist,par] = bfs(adj, 0);
-    cout << "BFS distances from 0:\n";
-    for(int i=0;i<n;i++) cout << i << ":" << dist[i] << " ";
-    cout << "\n";
-    // Dijkstra from 0
-    auto d = dijkstra(wadj, 0);
-    cout << "Dijkstra distances from 0:\n";
-    for(int i=0;i<n;i++){
-        if(d[i]==INF) cout << i << ":INF ";
-        else cout << i << ":" << d[i] << " ";
+};
+```
+
+**Complexity:** `O(V + E)` time, `O(V)` space.
+
+---
+
+# 11. Eulerian Path / Circuit (Hierholzer’s algorithm)
+
+**Definitions:**
+
+* Undirected Eulerian circuit: connected & every vertex has even degree.
+* Undirected Eulerian path (not circuit): exactly 0 or 2 vertices of odd degree.
+* Directed variants: indegree/outdegree conditions.
+
+**Intuition:** Repeatedly follow unused edges until stuck, then stitch cycles.
+
+```cpp
+#include <stack>
+class Solution {
+public:
+    // For undirected graphs using adjacency list of multiset-like (index-based edges)
+    vector<int> eulerianPathUndirected(int n, vector<vector<pair<int,int>>>& adj /* {neighbor, edge_id} */) {
+        vector<int> used; // will be sized to number of edges
+        int m = 0; // number of edges
+        for (auto &v : adj) m += v.size();
+        m /= 2; // undirected edges counted twice
+        used.assign(m, 0);
+
+        // find start: vertex with odd degree or 0
+        int start = 0;
+        for (int i = 0; i < n; ++i) if (adj[i].size() % 2 == 1) { start = i; break; }
+
+        vector<int> res;
+        stack<int> st;
+        vector<int> ptr(n, 0);
+        st.push(start);
+        while (!st.empty()) {
+            int u = st.top();
+            while (ptr[u] < (int)adj[u].size() && used[adj[u][ptr[u]].second]) ptr[u]++;
+            if (ptr[u] == (int)adj[u].size()) {
+                // no more edges
+                res.push_back(u);
+                st.pop();
+            } else {
+                auto [v, id] = adj[u][ptr[u]++];
+                used[id] = 1;
+                st.push(v);
+            }
+        }
+        reverse(res.begin(), res.end());
+        // res holds eulerian trail/circuit vertices (size m+1)
+        return res;
     }
-    cout << "\n";
-    // Kruskal
-    auto mst_cost = kruskal(n, edges);
-    cout << "Kruskal MST total cost: " << mst_cost << "\n";
-    // Topo if DAG
-    auto topo = topo_kahn(adj);
-    if(!topo.empty()){
-        cout << "Topological order: ";
-        for(int x: topo) cout << x << " ";
-        cout << "\n";
-    } else cout << "Graph not DAG or topo not applicable\n";
-    return 0;
-}
+};
 ```
+
+**Complexity:** `O(V + E)`.
 
 ---
 
-## 19. Visual Diagrams (Mermaid)
+# 12. A\* Search (brief)
 
-**Adjacency list**
+**Intuition:** Like Dijkstra but uses `f = g + h` where `h` is heuristic estimate to target (admissible & consistent for correctness). Useful in pathfinding (grids, maps).
 
-```mermaid
-graph LR
-  A[0] --> B[1]
-  A --> C[2]
-  B --> D[3]
+```cpp
+// Outline: requires problem-specific heuristic h(u)
+class Solution {
+public:
+    // g: actual distance so far, h: heuristic
+    // priority queue by f = g + h
+};
 ```
 
-**BFS layers**
-
-```mermaid
-graph TD
-  Start --> L0[0]
-  L0 --> L1[1,2]
-  L1 --> L2[3,4]
-```
-
-**DFS tree**
-
-```mermaid
-graph LR
-  0 --> 1
-  1 --> 2
-  2 --> 3
-  0 --> 4
-```
-
-**Dijkstra expanding frontier**
-
-```mermaid
-graph LR
-  src((S)) --> a((A))
-  src --> b((B))
-  a --> c((C))
-```
+**Complexity:** Depends on heuristic quality; worst-case similar to Dijkstra. Use when you have a good heuristic.
 
 ---
 
-## 20. Example Problem Set (practice)
+# 13. Patterns, Tips & Common LeetCode-style Templates
 
-* Implement BFS/DFS and print traversal order.
-* Shortest path (unweighted): BFS → path reconstruction.
-* Dijkstra: reconstruct shortest path from `src` to `dest`.
-* Bellman-Ford: detect negative cycle.
-* Kruskal: produce list of MST edges.
-* Topological sort and detect cycle in DAG.
-* Find SCCs with Kosaraju/Tarjan.
-* Maximum flow on a small capacity graph (Edmonds–Karp).
-* Find articulation points and bridges.
+* **Graph representation:** For most LeetCode problems, parse into `vector<vector<int>>` or `vector<vector<pair<int,int>>>`.
+* **Visited vs. distance:** Use `vector<int> vis` for visited, `vector<int> dist` when distances required.
+* **Cycle detection:**
 
----
-
-## 21. Common Pitfalls
-
-* Off-by-one indexing (0 vs 1).
-* Not using `long long` for distances/weights — risk overflow.
-* Forgetting to clear visited arrays between runs.
-* Using recursion depth > default stack (use iterative or increase stack).
-* Accidentally treating directed edges as undirected or vice-versa.
+  * Directed: DFS color (0 = unvisited, 1 = visiting, 2 = done) or use indegree & Kahn detect.
+  * Undirected: use parent pointer in DFS to avoid trivial back-edge.
+* **Edge cases:** disconnected graphs, single node, self-loops, multiple edges.
+* **When to choose BFS vs Dijkstra:** BFS if unweighted; Dijkstra if non-negative weights.
+* **Negative edges:** Use Bellman-Ford — but avoid if `V * E` too big.
 
 ---
 
-## 22. Further Reading
+# Complexity Summary Table
 
-* CLRS — *Introduction to Algorithms* (graph chapters)
-* Competitive Programming 3 (CP3)
-* Algorithms (S. Dasgupta, C. Papadimitriou, U. Vazirani)
-* Online resources (GeeksforGeeks, CP-algorithms, TopCoder tutorials)
+| Algorithm              |         Time |    Space | Use-case notes                          |
+| ---------------------- | -----------: | -------: | --------------------------------------- |
+| BFS / DFS              |     `O(V+E)` |   `O(V)` | Traversals, shortest unweighted         |
+| Dijkstra (binary heap) | `O(E log V)` |   `O(V)` | Non-negative weights                    |
+| Bellman-Ford           |      `O(VE)` |   `O(V)` | Negative weights, detect negative cycle |
+| 0-1 BFS                |     `O(V+E)` |   `O(V)` | Edge weights 0/1                        |
+| Floyd–Warshall         |     `O(V^3)` | `O(V^2)` | All pairs, small n                      |
+| Kruskal + DSU          | `O(E log E)` |   `O(V)` | MST, sort edges                         |
+| Prim (heap)            | `O(E log V)` |   `O(V)` | MST, single-tree growth                 |
+| Kosaraju / Tarjan      |     `O(V+E)` |   `O(V)` | SCCs                                    |
+| Bridges/Articulation   |     `O(V+E)` |   `O(V)` | Cut edges/vertices                      |
+| Eulerian Path          |     `O(V+E)` | `O(V+E)` | Build path/circuit                      |
+
+---
+
+# Appendix: Common LeetCode-style Class Templates
+
+Below are a few condensed, ready-to-submit templates you can paste into LeetCode or your judge:
+
+### BFS template (shortest unweighted distance)
+
+```cpp
+class Solution {
+public:
+    vector<int> shortestPathUnweighted(int n, vector<vector<int>>& adj, int src) {
+        const int INF = 1e9;
+        vector<int> dist(n, INF);
+        queue<int> q;
+        dist[src] = 0; q.push(src);
+        while (!q.empty()) {
+            int u = q.front(); q.pop();
+            for (int v : adj[u]) {
+                if (dist[v] == INF) {
+                    dist[v] = dist[u] + 1;
+                    q.push(v);
+                }
+            }
+        }
+        return dist;
+    }
+};
+```
+
+### Dijkstra template
+
+```cpp
+class Solution {
+public:
+    vector<long long> dijkstra(int n, vector<vector<pair<int,int>>>& adj, int src) {
+        const long long INF = (1LL<<60);
+        vector<long long> dist(n, INF);
+        priority_queue<pair<long long,int>, vector<pair<long long,int>>, greater<>> pq;
+        dist[src] = 0; pq.push({0, src});
+        while (!pq.empty()) {
+            auto [d,u] = pq.top(); pq.pop();
+            if (d != dist[u]) continue;
+            for (auto &e : adj[u]) {
+                int v = e.first; int w = e.second;
+                if (dist[v] > d + w) {
+                    dist[v] = d + w;
+                    pq.push({dist[v], v});
+                }
+            }
+        }
+        return dist;
+    }
+};
+```
 
 ---
 
