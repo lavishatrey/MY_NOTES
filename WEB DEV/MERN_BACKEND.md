@@ -788,11 +788,12 @@ Below are three common deployment strategies with diagrams and notes.
 ```mermaid
 flowchart LR
   ReactFrontend --> CDN
-  CDN --> Nginx[nginx reverse proxy]
-  Nginx --> PM2[PM2 process manager (Node)]
-  PM2 --> App[Express App]
-  App --> MongoDB[(MongoDB Atlas / EC2)]
+  CDN --> Nginx["nginx reverse proxy"]
+  Nginx --> PM2["PM2 process manager (Node)"]
+  PM2 --> App["Express App"]
+  App --> MongoDB["MongoDB Atlas / EC2"]
   Redis[(Redis)] --> App
+
 ```
 
 **Steps**
