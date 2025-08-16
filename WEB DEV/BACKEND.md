@@ -46,7 +46,7 @@ sequenceDiagram
 **Interview Tip:**
 Expect questions like:
 
-* "Explain how the internet works when you type a URL."
+* "Explain how the internet works when you type a URL." :: URL → DNS lookup → TCP + TLS → HTTP request → Server response → Browser renders → Page displayed
 * "What is the difference between stateful and stateless communication?"
 
 ---
